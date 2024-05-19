@@ -6,6 +6,8 @@ from folium import IFrame
 from folium.plugins import HeatMap
 import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
 def set_gradient_bg():
 
@@ -152,7 +154,7 @@ def Geospatial_visualisation_page():
         st.subheader("Listings Heatmap")
         folium_static(map_with_heatmap)
 
-def Price_Visualisation_page():
+def Room_Property_Pricing():
 
     Price_df = pd.read_csv('Price_data.csv')
 
@@ -264,11 +266,66 @@ def Price_Visualisation_page():
         # Display the plot
         st.pyplot(fig)
 
-def Location_page():
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
+
+    st.markdown("<h1 style='text-align: center; font-size: 32px;color: #ffffff;'>Availability by Cities</h1>", unsafe_allow_html=True)
+
+    Availability_df = pd.read_csv('Availability_data.csv')
+    Availability_df.columns = Availability_df.columns.str.strip()
+    
+    Availability_df = Availability_df[~Availability_df['City'].isin(['Other (Domestic)', 'Other (International)'])] 
+    
+
+    city_availability = Availability_df.groupby('City')[['next 30', 'next 60', 'next 90', 'next 365']].sum().reset_index()
+
+    # Create the grouped bar chart
+    fig = go.Figure()
+
+    # Add traces for each availability period
+    fig.add_trace(go.Bar(
+        x=city_availability['City'],
+        y=city_availability['next 30'],
+        name='30 Days',
+        marker_color='#767676'
+    ))
+    fig.add_trace(go.Bar(
+        x=city_availability['City'],
+        y=city_availability['next 60'],
+        name='60 Days',
+        marker_color='#484848'
+    ))
+    fig.add_trace(go.Bar(
+        x=city_availability['City'],
+        y=city_availability['next 90'],
+        name='90 Days',
+        marker_color='#FF979A'
+    ))
+    fig.add_trace(go.Bar(
+        x=city_availability['City'],
+        y=city_availability['next 365'],
+        name='365 Days',
+        marker_color='#FF5A5F'
+    ))
+
+    # Update the layout for grouped bars
+    fig.update_layout(
+        barmode='group',
+        title='Availability for Different Periods by City',
+        xaxis_title='City',
+        yaxis_title='Availability',
+        xaxis_tickangle=-45,
+        legend_title='Availability Period'
+    )
+
+    # Display the chart in Streamlit
+    st.plotly_chart(fig)
+
+
+def Neighborhood_page():
 
     Price_df = pd.read_csv('Price_data.csv')
 
-    st.title('Prices by suburbs')
+    st.markdown("<h1 style='text-align: center; font-size: 32px;color: #ffffff;'>Neighborhood Price Analysis: A comparison </h1>", unsafe_allow_html=True)
 
     country = st.selectbox("Select your country", Price_df['Country'].unique())
 
@@ -313,7 +370,9 @@ def Location_page():
 def Correlation_page():
 
     # Set the title
-    st.title('Correlation Heatmaps')
+    st.markdown("<h1 style='text-align: center; font-size: 32px;color: #ffffff;'>Correlation Heatmaps </h1>", unsafe_allow_html=True)
+
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
 
     # Load the data
     Corelation_df = pd.read_csv('Corelation_data.csv')
@@ -365,6 +424,205 @@ def Correlation_page():
     # Display the plot in Streamlit
     st.pyplot(plt.gcf())
 
+def Super_host_page():
+
+    Superhost_df = pd.read_csv('Superhost_data.csv')
+
+    st.markdown("<h1 style='text-align: center; font-size: 32px;color: #ffffff;'>Superhost Analysis: Country and city wise insights</h1>", unsafe_allow_html=True)
+
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
+
+    col5, col6 = st.columns([5,3])
+
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
+
+    col7, col8 = st.columns([5,3])
+
+    with col5:
+        st.subheader("Superhost by Country")
+
+        # Count superhosts by country
+        country_counts = Superhost_df.groupby(['Country', 'Super host']).size().reset_index(name='Count')
+        country_counts['Super host'] = country_counts['Super host'].replace({True: 'Superhost', False: 'Not Superhost', None: 'Not Available'})
+
+        custom_colors = {
+            'Superhost': '#FF5A5F',
+            'Not Superhost': '#767676',
+            'Not Available': '#767676'
+        }
+
+        # Bar chart for countries
+        plt.figure(figsize=(8, 7))
+        sns.barplot(data=country_counts, x='Country', y='Count', hue='Super host', palette=custom_colors)
+        plt.title("Superhost Status by Country")
+        plt.xlabel("Country",fontsize=14)
+        plt.ylabel("Count",fontsize=14)
+        plt.xticks(rotation=90,fontsize=13)
+        for container in plt.gca().containers:
+            plt.gca().bar_label(container)
+        st.pyplot(plt.gcf())
+        plt.clf()
+
+    with col6:
+        Superhost_df.columns = Superhost_df.columns.str.strip()
+
+        st.subheader("Average Price")
+
+        # Calculate average price by country
+        country_avg_price = Superhost_df.groupby('Country')['Price'].mean().reset_index()
+        country_avg_price['Price'] = country_avg_price['Price'].round(2)
+
+        # Bar chart for average price by country
+        plt.figure(figsize=(8,13))
+        sns.barplot(data=country_avg_price, x='Country', y='Price', palette=['#FF5A5F'])
+        plt.title("Average Price by Country",fontsize=16)
+        plt.xlabel("Country",fontsize=16)
+        plt.ylabel("Average Price",fontsize=16)
+        plt.xticks(rotation=90,fontsize=18)
+        for container in plt.gca().containers:
+            plt.gca().bar_label(container)
+        st.pyplot(plt.gcf())
+        plt.clf()
+
+
+    with col7:
+        st.subheader("Superhost by City")
+
+        # Count superhosts by city
+        city_counts = Superhost_df.groupby(['City', 'Super host']).size().reset_index(name='Count')
+        city_counts['Super host'] = city_counts['Super host'].replace({True: 'Superhost', False: 'Not Superhost', None: 'Not Available'})
+
+        custom_colors = {
+            'Superhost': '#FF5A5F',
+            'Not Superhost': '#767676',
+            'Not Available': '#767676'
+        }
+
+        # Bar chart for cities
+        plt.figure(figsize=(8, 6))
+        sns.barplot(data=city_counts, x='City', y='Count', hue='Super host', palette=custom_colors)
+        plt.title("Superhost Status by City")
+        plt.xlabel("City", fontsize=14)
+        plt.ylabel("Count", fontsize=14)
+        plt.xticks(rotation=90, fontsize=13)
+        for container in plt.gca().containers:
+            plt.gca().bar_label(container)
+        st.pyplot(plt.gcf())
+        plt.clf()
+
+    with col8:
+        st.subheader("Average Price by City")
+
+        # Calculate average price by city
+        city_avg_price = Superhost_df.groupby('City')['Price'].mean().reset_index()
+        city_avg_price['Price'] = city_avg_price['Price'].round(2)
+
+        # Bar chart for average price by city
+        plt.figure(figsize=(8, 12))
+        sns.barplot(data=city_avg_price, x='City', y='Price', palette=['#FF5A5F'])
+        plt.title("Average Price by City", fontsize=16)
+        plt.xlabel("City", fontsize=16)
+        plt.ylabel("Average Price", fontsize=16)
+        plt.xticks(rotation=90, fontsize=16)
+        for container in plt.gca().containers:
+            plt.gca().bar_label(container)
+        st.pyplot(plt.gcf())
+        plt.clf()
+
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
+
+    st.markdown("<h1 style='text-align: center; font-size: 32px;color: #ffffff;'>Host-listings Analysis: Market Insights </h1>", unsafe_allow_html=True)
+
+    st.markdown("""<hr style="height:1px;border:none;color:#FF5A5F;background-color:#FF5A5F;" /> """, unsafe_allow_html=True)
+
+    Superhost_df = pd.read_csv('Superhost_data.csv')
+
+    col9, col10 = st.columns([2,2])
+
+    with col9:
+        # Calculate averages
+
+            st.subheader('Avg. host listings')
+
+            unique_cities = Superhost_df['City'].unique()
+
+            city_avg_listings = Superhost_df.groupby('City')['Host Listings'].mean().reindex(unique_cities).reset_index()
+            city_avg_listings['Host Listings'] = city_avg_listings['Host Listings'].round(2)
+
+                # Create the bar chart
+            plt.figure(figsize=(11, 19))        
+            ax = sns.barplot(data=city_avg_listings, y='City', x='Host Listings', palette=['#FF5A5F'])
+            plt.title("Average Listings per Host by City", fontsize=16)
+            plt.xlabel("Average Listings per Host", fontsize=14)
+            plt.ylabel("City", fontsize=14)
+            plt.xticks(fontsize=20)
+            plt.yticks(rotation=45,fontsize=20)
+            
+
+
+                # Display the chart in Streamlit
+            st.pyplot(plt.gcf())
+            plt.clf() 
+
+    with col10:
+
+        st.subheader('Total listings by city')
+
+        unique_cities = Superhost_df['City'].unique()
+        
+        city_listing_counts = Superhost_df['City'].value_counts().reindex(unique_cities).reset_index()
+        city_listing_counts.columns = ['City', 'Listing Count']
+
+        
+
+            # Create the bar chart
+        plt.figure(figsize=(11, 19))
+        sns.barplot(data=city_listing_counts, y='City', x='Listing Count', palette=['#FF5A5F'])
+        plt.title("Listing Count by City", fontsize=16)
+        plt.xlabel("Listing Count", fontsize=14)
+        plt.ylabel("City", fontsize=14)
+        plt.xticks(fontsize=20)
+        plt.yticks(rotation=45,fontsize=20)
+
+            # Display the chart in Streamlit
+        st.pyplot(plt.gcf())
+
+    st.subheader('Avg. Host listings vs Total listings')
+
+    unique_cities = Superhost_df['City'].unique()
+
+    # Calculate total listings in each city
+    city_listing_counts = Superhost_df['City'].value_counts().reindex(unique_cities).reset_index()
+    city_listing_counts.columns = ['City', 'Listing Count']
+
+    # Calculate the average number of listings per host for each city
+    city_avg_listings = Superhost_df.groupby('City')['Host Listings'].mean().reindex(unique_cities).reset_index()
+    city_avg_listings['Host Listings'] = city_avg_listings['Host Listings'].round(2)
+
+    # Merge the dataframes on 'City'
+    merged_data = pd.merge(city_listing_counts, city_avg_listings, on='City')
+
+    # Create the scatter plot with Plotly
+    fig = px.scatter(merged_data, 
+                    x='Listing Count', 
+                    y='Host Listings', 
+                    text='City', 
+                    labels={
+                        'Listing Count': 'Total Listings in City',
+                        'Host Listings': 'Average Listings per Host'
+                    },
+                    title="Number of Listings per Host vs. Total Listings in Each City")
+
+    fig.update_traces(marker=dict(size=12),
+                    selector=dict(mode='markers+text'),
+                    textposition='top center')
+
+    # Display the chart in Streamlit
+    st.plotly_chart(fig)
+
+
+
+
 def main():
 
     set_gradient_bg()
@@ -379,24 +637,29 @@ def main():
         st.session_state.current_page = 'Introduction'
     if st.sidebar.button("Geospatial Visualisation"):
         st.session_state.current_page = 'Geospatial Visualisation'
-    if st.sidebar.button("Price Location Visualisation"):
-        st.session_state.current_page = 'Price_location Visualisation'
-    if st.sidebar.button("Location based Visualisation"):
-        st.session_state.current_page = 'Location based Visualisation'
+    if st.sidebar.button("Room & Property Type Pricing"):
+        st.session_state.current_page = 'Room & Property Type Pricing'
+    if st.sidebar.button("Neighborhood Price trends"):
+        st.session_state.current_page = 'Neighborhood Price trends'
     if st.sidebar.button("Correlation Visualisation"):
         st.session_state.current_page = 'Correlation Visualisation'
+    if st.sidebar.button("Host Insights"):
+        st.session_state.current_page = 'Host Insights'
+    
 
         # Display the selected page
     if st.session_state.current_page == "Introduction":
         intro_page()
     elif st.session_state.current_page == "Geospatial Visualisation":
         Geospatial_visualisation_page()
-    elif st.session_state.current_page == "Price_location Visualisation":
-        Price_Visualisation_page()
-    elif st.session_state.current_page == "Location based Visualisation":
-        Location_page()
+    elif st.session_state.current_page == "Room & Property Type Pricing":
+        Room_Property_Pricing()
+    elif st.session_state.current_page == "Neighborhood Price trends":
+        Neighborhood_page()
     elif st.session_state.current_page == "Correlation Visualisation":
         Correlation_page()
+    elif st.session_state.current_page == "Host Insights":
+        Super_host_page()
 
 if __name__ == "__main__":
     main()
